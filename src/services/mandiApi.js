@@ -1,8 +1,10 @@
-const MANDI_API_URL =
-  "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070";
+// src/services/mandiApi.js
 
-const MANDI_API_KEY =
-  import.meta.env.VITE_MANDI_API_KEY;
+import { supabase } from "../lib/supabase";
+
+// =============================================================
+// GET MANDI PRICES
+// =============================================================
 
 export async function getMandiPrices({
   state,
@@ -15,80 +17,44 @@ export async function getMandiPrices({
   offset = 0,
 } = {}) {
   try {
-    if (!MANDI_API_KEY) {
+    const { data, error } =
+      await supabase.functions.invoke(
+        "get-mandi-prices",
+        {
+          body: {
+            state: state || "",
+            district: district || "",
+            market: market || "",
+            commodity: commodity || "",
+            variety: variety || "",
+            grade: grade || "",
+            limit,
+            offset,
+          },
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Mandi Edge Function error:",
+        error
+      );
+
       throw new Error(
-        "Mandi API key is missing. Add VITE_MANDI_API_KEY to your .env file."
+        error.message ||
+          "Unable to fetch mandi prices"
       );
     }
 
-    const url = new URL(MANDI_API_URL);
-
-    url.searchParams.set(
-      "api-key",
-      MANDI_API_KEY
-    );
-
-    url.searchParams.set("format", "json");
-    url.searchParams.set(
-      "limit",
-      String(limit)
-    );
-    url.searchParams.set(
-      "offset",
-      String(offset)
-    );
-
-    if (state) {
-      url.searchParams.set(
-        "filters[state.keyword]",
-        state
-      );
-    }
-
-    if (district) {
-      url.searchParams.set(
-        "filters[district]",
-        district
-      );
-    }
-
-    if (market) {
-      url.searchParams.set(
-        "filters[market]",
-        market
-      );
-    }
-
-    if (commodity) {
-      url.searchParams.set(
-        "filters[commodity]",
-        commodity
-      );
-    }
-
-    if (variety) {
-      url.searchParams.set(
-        "filters[variety]",
-        variety
-      );
-    }
-
-    if (grade) {
-      url.searchParams.set(
-        "filters[grade]",
-        grade
-      );
-    }
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
+    if (!data) {
       throw new Error(
-        `Mandi API error: ${response.status}`
+        "Mandi API returned no data"
       );
     }
 
-    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error);
+    }
 
     console.log(
       "Mandi API response:",
