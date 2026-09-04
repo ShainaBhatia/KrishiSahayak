@@ -1,5 +1,3 @@
-// src/services/mandiApi.js
-
 import { supabase } from "../lib/supabase";
 
 // =============================================================
@@ -7,12 +5,12 @@ import { supabase } from "../lib/supabase";
 // =============================================================
 
 export async function getMandiPrices({
-  state,
-  district,
-  market,
-  commodity,
-  variety,
-  grade,
+  state = "",
+  district = "",
+  market = "",
+  commodity = "",
+  variety = "",
+  grade = "",
   limit = 50,
   offset = 0,
 } = {}) {
@@ -22,17 +20,21 @@ export async function getMandiPrices({
         "get-mandi-prices",
         {
           body: {
-            state: state || "",
-            district: district || "",
-            market: market || "",
-            commodity: commodity || "",
-            variety: variety || "",
-            grade: grade || "",
+            state,
+            district,
+            market,
+            commodity,
+            variety,
+            grade,
             limit,
             offset,
           },
         }
       );
+
+    // ---------------------------------------------------------
+    // Supabase Edge Function error
+    // ---------------------------------------------------------
 
     if (error) {
       console.error(
@@ -42,19 +44,31 @@ export async function getMandiPrices({
 
       throw new Error(
         error.message ||
-          "Unable to fetch mandi prices"
+          "Unable to fetch mandi prices."
       );
     }
 
+    // ---------------------------------------------------------
+    // Empty response
+    // ---------------------------------------------------------
+
     if (!data) {
       throw new Error(
-        "Mandi API returned no data"
+        "Mandi API returned no data."
       );
     }
+
+    // ---------------------------------------------------------
+    // Error returned by Edge Function
+    // ---------------------------------------------------------
 
     if (data.error) {
       throw new Error(data.error);
     }
+
+    // ---------------------------------------------------------
+    // Success
+    // ---------------------------------------------------------
 
     console.log(
       "Mandi API response:",
@@ -62,6 +76,7 @@ export async function getMandiPrices({
     );
 
     return data;
+
   } catch (error) {
     console.error(
       "Failed to fetch mandi prices:",

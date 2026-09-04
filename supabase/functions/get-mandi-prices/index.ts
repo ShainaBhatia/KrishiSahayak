@@ -3,6 +3,10 @@
 const MANDI_API_URL =
   "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070";
 
+// =============================================================
+// CORS
+// =============================================================
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -28,6 +32,26 @@ Deno.serve(async (req) => {
 
   try {
     // ---------------------------------------------------------
+    // Only allow POST
+    // ---------------------------------------------------------
+
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({
+          error: "Method not allowed",
+        }),
+        {
+          status: 405,
+          headers: {
+            ...corsHeaders,
+            "Content-Type":
+              "application/json",
+          },
+        }
+      );
+    }
+
+    // ---------------------------------------------------------
     // Get request body
     // ---------------------------------------------------------
 
@@ -45,7 +69,7 @@ Deno.serve(async (req) => {
     } = body || {};
 
     // ---------------------------------------------------------
-    // Get API key from Supabase secret
+    // Get API key from Supabase Secret
     // ---------------------------------------------------------
 
     const apiKey =
@@ -83,6 +107,10 @@ Deno.serve(async (req) => {
       "offset",
       String(offset)
     );
+
+    // ---------------------------------------------------------
+    // Filters
+    // ---------------------------------------------------------
 
     if (state) {
       url.searchParams.set(
@@ -126,6 +154,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ---------------------------------------------------------
+    // Logging
+    // ---------------------------------------------------------
+
     console.log(
       "Fetching mandi data:",
       {
@@ -141,11 +173,33 @@ Deno.serve(async (req) => {
     );
 
     // ---------------------------------------------------------
-    // Call data.gov.in from the server
+    // Call data.gov.in
     // ---------------------------------------------------------
 
-    const response =
-      await fetch(url.toString());
+    const controller =
+      new AbortController();
+
+    const timeout = setTimeout(
+      () => controller.abort(),
+      15000
+    );
+
+    let response;
+
+    try {
+      response = await fetch(
+        url.toString(),
+        {
+          signal: controller.signal,
+        }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    // ---------------------------------------------------------
+    // Handle API error
+    // ---------------------------------------------------------
 
     if (!response.ok) {
       const errorText =
@@ -161,6 +215,10 @@ Deno.serve(async (req) => {
         `Mandi API returned status ${response.status}`
       );
     }
+
+    // ---------------------------------------------------------
+    // Parse response
+    // ---------------------------------------------------------
 
     const data =
       await response.json();
@@ -185,17 +243,22 @@ Deno.serve(async (req) => {
         },
       }
     );
+
   } catch (error) {
     console.error(
       "get-mandi-prices failed:",
       error
     );
 
+    const message =
+      error?.name === "AbortError"
+        ? "Mandi API request timed out. Please try again."
+        : error?.message ||
+          "Failed to fetch mandi prices.";
+
     return new Response(
       JSON.stringify({
-        error:
-          error?.message ||
-          "Failed to fetch mandi prices",
+        error: message,
       }),
       {
         status: 500,
