@@ -469,8 +469,15 @@ export default function AiCopilotPage() {
 
   const { user } = useAuth();
 
-  const { language } =
-    useLanguage();
+  /*
+   * IMPORTANT:
+   * LanguageContext is now the single source of truth
+   * for the entire application.
+   */
+  const {
+    language,
+    setLanguage,
+  } = useLanguage();
 
   /* ===========================================================
      CHAT STATE
@@ -496,11 +503,8 @@ export default function AiCopilotPage() {
     useState("");
 
   /* ===========================================================
-     LANGUAGE STATE
+     UI TRANSLATION STATE
      =========================================================== */
-
-  const [selectedLanguage, setSelectedLanguage] =
-    useState(language || "hi");
 
   const [translations, setTranslations] =
     useState(ENGLISH_TEXTS);
@@ -537,16 +541,6 @@ export default function AiCopilotPage() {
   }, [translations.initialGreeting]);
 
   /* ===========================================================
-     SYNC WITH GLOBAL LANGUAGE
-     =========================================================== */
-
-  useEffect(() => {
-    if (language) {
-      setSelectedLanguage(language);
-    }
-  }, [language]);
-
-  /* ===========================================================
      TRANSLATE COPILOT UI
      =========================================================== */
 
@@ -558,8 +552,12 @@ export default function AiCopilotPage() {
         !language ||
         language === "en"
       ) {
-        setTranslations(ENGLISH_TEXTS);
+        setTranslations(
+          ENGLISH_TEXTS
+        );
+
         setIsTranslating(false);
+
         return;
       }
 
@@ -570,7 +568,9 @@ export default function AiCopilotPage() {
           Object.keys(ENGLISH_TEXTS);
 
         const englishTexts =
-          Object.values(ENGLISH_TEXTS);
+          Object.values(
+            ENGLISH_TEXTS
+          );
 
         const translated =
           await translateTexts(
@@ -781,8 +781,8 @@ export default function AiCopilotPage() {
     );
 
     console.log(
-      "Selected language:",
-      selectedLanguage
+      "Global language:",
+      language
     );
 
     /* ---------------------------------------------------------
@@ -803,9 +803,13 @@ export default function AiCopilotPage() {
     setIsThinking(true);
 
     try {
+      /*
+       * Convert the global language code into the code expected
+       * by Gemini.
+       */
       const languageCode =
         LANGUAGE_PROMPT_CODES[
-          selectedLanguage
+          language
         ] || "en";
 
       /* -------------------------------------------------------
@@ -905,7 +909,7 @@ export default function AiCopilotPage() {
       try {
         const speechLanguage =
           LANGUAGE_VOICE_CODES[
-            selectedLanguage
+            language
           ] || "en-IN";
 
         speakResponse(
@@ -1002,7 +1006,7 @@ export default function AiCopilotPage() {
 
     const speechLanguage =
       LANGUAGE_VOICE_CODES[
-        selectedLanguage
+        language
       ] || "en-IN";
 
     console.log(
@@ -1085,7 +1089,7 @@ export default function AiCopilotPage() {
     try {
       const speechLanguage =
         LANGUAGE_VOICE_CODES[
-          selectedLanguage
+          language
         ] || "en-IN";
 
       speakResponse(
@@ -1119,9 +1123,18 @@ export default function AiCopilotPage() {
 
     setVoiceError("");
 
-    setSelectedLanguage(
-      newLanguage
-    );
+    /*
+     * IMPORTANT:
+     * Update the global LanguageContext instead of maintaining
+     * a separate local language state.
+     *
+     * This means:
+     *
+     * Copilot → LanguageContext
+     * Profile → LanguageContext
+     * LanguageContext → entire application
+     */
+    setLanguage(newLanguage);
   };
 
   /* ===========================================================
@@ -1155,9 +1168,9 @@ export default function AiCopilotPage() {
     };
   }, []);
 
-  /* ===========================================================
+  /* =============================================================
      UI
-     =========================================================== */
+     ============================================================= */
 
   return (
     <Layout
@@ -1215,7 +1228,7 @@ export default function AiCopilotPage() {
 
                 <select
                   id="copilot-language"
-                  value={selectedLanguage}
+                  value={language || "en"}
                   onChange={
                     handleLanguageChange
                   }
@@ -1296,11 +1309,13 @@ export default function AiCopilotPage() {
                   key={chip.key}
                   type="button"
                   onClick={() =>
+                    /*
+                     * Send the canonical English question
+                     * to Gemini. Gemini will answer using
+                     * the current global language.
+                     */
                     sendMessage(
-                      translations[
-                        chip.key
-                      ] ||
-                        chip.english
+                      chip.english
                     )
                   }
                   disabled={isThinking}
@@ -1619,11 +1634,13 @@ export default function AiCopilotPage() {
                     key={question.key}
                     type="button"
                     onClick={() =>
+                      /*
+                       * Send the canonical English question.
+                       * Gemini responds in the current global
+                       * language.
+                       */
                       sendMessage(
-                        translations[
-                          question.key
-                        ] ||
-                          question.english
+                        question.english
                       )
                     }
                     disabled={isThinking}
@@ -1680,7 +1697,7 @@ export default function AiCopilotPage() {
               Current language:{" "}
               {
                 LANGUAGE_NAMES[
-                  selectedLanguage
+                  language
                 ] || "English"
               }
             </p>
