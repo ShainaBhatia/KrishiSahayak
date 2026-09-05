@@ -21,7 +21,7 @@ const supabase = createClient(
 const WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast";
 
 const MANDI_API_URL =
-  "https://api.data.gov.in/resource/current-daily-price-various-commodities-various-markets-mandi";
+  "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070";
 // TODO: verify this is your actual data.gov.in resource ID — that API
 // normally addresses datasets by a UUID (e.g. 9ef84268-d588-465a-a308-a864a43d0070),
 // not a readable slug like the one above. Test the full URL (with your
